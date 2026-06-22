@@ -1,21 +1,24 @@
 #!/usr/bin/env bash
-# Wrapper for the options-wheel strategy, designed to be cron-safe.
-# - Uses absolute paths (cron has a minimal environment).
+# Cron-safe wrapper for the options-wheel strategy.
+# - Paths are derived from this script's location (repo-portable):
+#     SCRIPT_DIR = <repo>/deploy, REPO_DIR = <repo>, PROJECT_DIR = <repo>/..
 # - Cancels any stale/foreign OPEN orders before running (the wheel uses
-#   market orders that fill immediately, so it should never have resting orders;
-#   a leftover order can fill mid-wheel and inject an odd-lot that crashes
-#   update_state()). See project note "Finding 3".
+#   market orders that fill immediately, so it should never have resting
+#   orders; a leftover order can fill mid-wheel and inject an odd-lot that
+#   crashes update_state()). See project note "Finding 3".
 # - Captures all stdout/stderr to a dated log so we keep a record even if the
 #   strategy crashes before writing its own JSON log ("Finding 2").
-# - Writes a clear OK/FAILED status line for monitoring.
+# - Writes a clear OK/FAILED status line, and on failure alerts via an
+#   Obsidian-visible note + a best-effort Windows toast.
 #
 # Usage: run_wheel.sh [extra run-strategy flags...]
 #   e.g. run_wheel.sh --fresh-start    (first run only)
 
 set -uo pipefail
 
-PROJECT_DIR="/home/want/my-obsidian-vault/timmy/06 Projects/claude.alpaca.paper"
-REPO_DIR="$PROJECT_DIR/options-wheel"
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+REPO_DIR="$(cd "$SCRIPT_DIR/.." && pwd)"
+PROJECT_DIR="$(cd "$REPO_DIR/.." && pwd)"
 VENV_BIN="$REPO_DIR/.venv/bin"
 LOG_DIR="$REPO_DIR/logs"
 ENV_FILE="$REPO_DIR/.env"
