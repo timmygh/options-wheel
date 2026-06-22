@@ -33,7 +33,11 @@ def sell_puts(client, allowed_symbols, buying_power, strat_logger = None):
             if buying_power < 0:
                 break
             logger.info(f"Selling put: {p.symbol}")
-            client.market_sell(p.symbol)
+            try:
+                client.market_sell(p.symbol)
+            except Exception:
+                logger.exception(f"Failed to sell put {p.symbol}; skipping this contract.")
+                continue
             if strat_logger:
                 strat_logger.log_sold_puts([p.to_dict()])
     else:
@@ -57,7 +61,11 @@ def sell_calls(client, symbol, purchase_price, stock_qty, strat_logger = None):
         scores = score_options(call_options)
         contract = call_options[np.argmax(scores)]
         logger.info(f"Selling call option: {contract.symbol}")
-        client.market_sell(contract.symbol)
+        try:
+            client.market_sell(contract.symbol)
+        except Exception:
+            logger.exception(f"Failed to sell covered call {contract.symbol} on {symbol}; skipping.")
+            return
         if strat_logger:
             strat_logger.log_sold_calls(contract.to_dict())
     else:

@@ -23,34 +23,42 @@ def main():
 
     client = BrokerClient(api_key=ALPACA_API_KEY, secret_key=ALPACA_SECRET_KEY, paper=IS_PAPER)
 
-    if args.fresh_start:
-        logger.info("Running in fresh start mode — liquidating all positions.")
-        client.liquidate_all_positions()
-        allowed_symbols = SYMBOLS
-        buying_power = MAX_RISK
-    else:
-        positions = client.get_positions()
-        strat_logger.add_current_positions(positions)
+    try:
+        if args.fresh_start:
+            logger.info("Running in fresh start mode — liquidating all positions.")
+            client.liquidate_all_positions()
+            allowed_symbols = SYMBOLS
+            buying_power = MAX_RISK
+        else:
+            positions = client.get_positions()
+            strat_logger.add_current_positions(positions)
 
-        current_risk = calculate_risk(positions)
-        
-        states = update_state(positions)
-        strat_logger.add_state_dict(states)
+            current_risk = calculate_risk(positions)
 
-        for symbol, state in states.items():
-            if state["type"] == "long_shares":
-                sell_calls(client, symbol, state["price"], state["qty"], strat_logger)
+            states = update_state(positions)
+            strat_logger.add_state_dict(states)
 
-        allowed_symbols = list(set(SYMBOLS).difference(states.keys()))
-        buying_power = MAX_RISK - current_risk
-    
-    strat_logger.set_buying_power(buying_power)
-    strat_logger.set_allowed_symbols(allowed_symbols)
+            for symbol, state in states.items():
+                if state["type"] == "long_shares":
+                    try:
+                        sell_calls(client, symbol, state["price"], state["qty"], strat_logger)
+                    except Exception:
+                        logger.exception(f"Failed to sell covered calls for {symbol}; continuing with other symbols.")
 
-    logger.info(f"Current buying power is ${buying_power}")
-    sell_puts(client, allowed_symbols, buying_power, strat_logger)
+            allowed_symbols = list(set(SYMBOLS).difference(states.keys()))
+            buying_power = MAX_RISK - current_risk
 
-    strat_logger.save()    
+        strat_logger.set_buying_power(buying_power)
+        strat_logger.set_allowed_symbols(allowed_symbols)
+
+        logger.info(f"Current buying power is ${buying_power}")
+        sell_puts(client, allowed_symbols, buying_power, strat_logger)
+    except Exception:
+        logger.exception("Strategy run failed with an unhandled exception.")
+        raise
+    finally:
+        # Always persist the strategy log, even if the run crashed partway (Finding 2).
+        strat_logger.save()
 
 if __name__ == "__main__":
     main()
