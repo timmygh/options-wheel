@@ -20,6 +20,13 @@ from pathlib import Path
 import requests
 from dotenv import load_dotenv
 
+# On Windows this box's default codec is cp950 (HK locale); the report contains
+# Unicode glyphs. Make stdout tolerant so a redirected print() never crashes.
+try:
+    sys.stdout.reconfigure(encoding="utf-8", errors="replace")
+except Exception:
+    pass
+
 SCRIPT_DIR = Path(__file__).resolve().parent
 REPO_DIR = SCRIPT_DIR.parent
 PROJECT_DIR = REPO_DIR.parent
@@ -157,7 +164,7 @@ def main():
 
     REPORTS_DIR.mkdir(exist_ok=True)
     out = REPORTS_DIR / f"wheel_report_{now:%Y-%m-%d}.md"
-    out.write_text(report)
+    out.write_text(report, encoding="utf-8")
     print(report)
     print(f"\n[written to {out}]")
 

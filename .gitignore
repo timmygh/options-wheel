@@ -1,6 +1,8 @@
 archive/
 logs/
 figures/
+reports/*.md        # generated daily reports are per-machine runtime output
+deploy/*.bak        # local backups (e.g. disabled WSL crontab)
 options_wheel.egg-info
 log_analysis.ipynb
 __pycache__/
